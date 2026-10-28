@@ -58,20 +58,25 @@ jobs:
             --configuration=release_arm64 \
             --buildNumber="$BUILD_NUMBER"
 
-          # collect ipa
+          # collect ipa (Swiftgram names the output Swiftgram.ipa)
           OUTPUT_PATH="build/artifacts"
           rm -rf "$OUTPUT_PATH"
           mkdir -p "$OUTPUT_PATH"
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/Telegram.ipa; do
-            cp "$f" $OUTPUT_PATH/
-          done
+          IPA_SRC="$(ls bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.ipa 2>/dev/null | head -n1)"
+          if [ -z "$IPA_SRC" ]; then
+            echo "ERROR: no .ipa produced; directory contents:"
+            ls -la bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/ || true
+            exit 1
+          fi
+          echo "Found IPA: $IPA_SRC"
+          cp "$IPA_SRC" "$OUTPUT_PATH/MagicGram.ipa"
 
-          # collect dsym
+          # collect dsym (tolerant)
           mkdir -p build/DSYMs
           for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.dSYM; do
-            cp -R "$f" build/DSYMs/
+            [ -e "$f" ] && cp -R "$f" build/DSYMs/ || true
           done
-          zip -r "./$OUTPUT_PATH/Telegram.DSYMs.zip" build/DSYMs 1>/dev/null
+          zip -r "./$OUTPUT_PATH/MagicGram.DSYMs.zip" build/DSYMs 1>/dev/null || true
 
       - name: Create Release
         id: create_release
@@ -93,8 +98,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: /Users/Shared/telegram-ios/build/artifacts/Telegram.ipa
-          asset_name: Telegram.ipa
+          asset_path: /Users/Shared/telegram-ios/build/artifacts/MagicGram.ipa
+          asset_name: MagicGram.ipa
           asset_content_type: application/zip
 
       - name: Upload Release DSYM
@@ -104,6 +109,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: /Users/Shared/telegram-ios/build/artifacts/Telegram.DSYMs.zip
-          asset_name: Telegram.DSYMs.zip
+          asset_path: /Users/Shared/telegram-ios/build/artifacts/MagicGram.DSYMs.zip
+          asset_name: MagicGram.DSYMs.zip
           asset_content_type: application/zip
