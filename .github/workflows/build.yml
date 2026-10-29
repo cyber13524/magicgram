@@ -62,21 +62,25 @@ jobs:
           OUTPUT_PATH="build/artifacts"
           rm -rf "$OUTPUT_PATH"
           mkdir -p "$OUTPUT_PATH"
-          IPA_SRC="$(ls bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.ipa 2>/dev/null | head -n1)"
+          IPA_SRC="$(ls bazel-bin/Telegram/*.ipa 2>/dev/null | head -n1)"
           if [ -z "$IPA_SRC" ]; then
-            echo "ERROR: no .ipa produced; directory contents:"
-            ls -la bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/ || true
+            IPA_SRC="$(find -L bazel-bin bazel-out . -name '*.ipa' 2>/dev/null | head -n1)"
+          fi
+          if [ -z "$IPA_SRC" ]; then
+            echo "ERROR: no .ipa produced anywhere; searched tree:"
+            find -L bazel-bin bazel-out . -name '*.ipa' 2>/dev/null || true
+            ls -la bazel-bin/Telegram/ 2>/dev/null || true
             exit 1
           fi
           echo "Found IPA: $IPA_SRC"
           cp "$IPA_SRC" "$OUTPUT_PATH/MagicGram.ipa"
 
-          # collect dsym (tolerant)
+          # collect dsym (tolerant, non-fatal)
           mkdir -p build/DSYMs
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.dSYM; do
-            [ -e "$f" ] && cp -R "$f" build/DSYMs/ || true
+          for f in bazel-bin/Telegram/*.app.dSYM bazel-bin/Telegram/*.dSYM; do
+            [ -e "$f" ] && cp -R "$f" build/DSYMs/ 2>/dev/null || true
           done
-          zip -r "./$OUTPUT_PATH/MagicGram.DSYMs.zip" build/DSYMs 1>/dev/null || true
+          zip -r "./$OUTPUT_PATH/MagicGram.DSYMs.zip" build/DSYMs 1>/dev/null 2>&1 || true
 
       - name: Create Release
         id: create_release
